@@ -167,8 +167,10 @@ void main() {
   color3_t curc = mix(color.rgb, col, factor);
   // Blend with opacity
   FRAG_COLOR = mix(colr, vec4(curc, color.a), color.a);
-#else
+#elif defined(DRAW_BLIT)
   coord_t coord = vec2(gl_FragCoord.x / screenWidth, gl_FragCoord.y / screenHeight);
-  FRAG_COLOR = texture(background, coord) * (1.0 - color.a) + color * color.a;
+  FRAG_COLOR = texture(background, coord);
+#else
+  FRAG_COLOR = color;
 #endif
 }

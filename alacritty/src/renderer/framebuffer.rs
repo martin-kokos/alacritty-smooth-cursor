@@ -9,36 +9,22 @@ use std::{mem, ptr, cell::Cell};
 pub struct FramebufferRenderer {
     fb:  GLuint,
     tex: GLuint,
-    vao: GLuint,
-    vbo: GLuint,
 
     width:  GLsizei,
     height: GLsizei,
 
     // Framebuffer that was active when the `enable` was called
     enable_fb: Cell<GLuint>,
-
-    vertices: Vec<Vertex>,
 }
 
 impl FramebufferRenderer {
     pub fn new() -> Self {
         let mut fb:  GLuint = 0;
         let mut tex: GLuint = 0;
-        let mut vao: GLuint = 0;
-        let mut vbo: GLuint = 0;
 
         let init_pixels: GLsizei = 128;
 
         let size: f32 = 1.0;
-        let vertices = vec![
-            Vertex{ x:-size, y: size, r: 0, g: 0, b: 0, a: 0 },
-            Vertex{ x:-size, y:-size, r: 0, g: 0, b: 0, a: 0 },
-            Vertex{ x: size, y: size, r: 0, g: 0, b: 0, a: 0 },
-            Vertex{ x: size, y: size, r: 0, g: 0, b: 0, a: 0 },
-            Vertex{ x: size, y:-size, r: 0, g: 0, b: 0, a: 0 },
-            Vertex{ x:-size, y:-size, r: 0, g: 0, b: 0, a: 0 },
-        ];
 
         unsafe {
             gl::GenFramebuffers(1, &mut fb);
@@ -74,13 +60,6 @@ impl FramebufferRenderer {
             gl::BindTexture(gl::TEXTURE_2D, 0);
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 
-            gl::GenVertexArrays(1, &mut vao);
-            gl::GenBuffers(1, &mut vbo);
-
-            gl::BindVertexArray(vao);
-
-            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-
             let mut attribute_offset = 0;
 
             // Position.
@@ -111,11 +90,10 @@ impl FramebufferRenderer {
         }
 
         Self{
-            fb, tex, vao, vbo,
+            fb, tex,
             width:  init_pixels,
             height: init_pixels,
             enable_fb: Cell::new(0 as GLuint),
-            vertices
         }
     } // <-- FramebufferRenderer::new()
 
@@ -161,46 +139,6 @@ impl FramebufferRenderer {
         }
     } // <-- FramebufferRenderer::resize(self, width, height)
 
-    /// Draw the stored texture
-    pub fn draw(&self, prog: GLuint) {
-        let mut cur_tex:       GLint = 0;
-        let mut cur_prog:      GLint = 0;
-        let mut cur_blend_src: GLint = 0;
-        let mut cur_blend_dst: GLint = 0;
-        unsafe {
-            gl::GetIntegerv(gl::TEXTURE_BINDING_2D, &mut cur_tex);
-            gl::GetIntegerv(gl::CURRENT_PROGRAM, &mut cur_prog);
-            gl::GetIntegerv(gl::BLEND_SRC_ALPHA, &mut cur_blend_src);
-            gl::GetIntegerv(gl::BLEND_DST_ALPHA, &mut cur_blend_dst);
-
-            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-
-            gl::BindVertexArray(self.vao);
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
-
-            gl::UseProgram(prog);
-
-            gl::BindTexture(gl::TEXTURE_2D, self.tex);
-
-            gl::BufferData(
-                gl::ARRAY_BUFFER,
-                (self.vertices.len() * mem::size_of::<Vertex>()) as isize,
-                self.vertices.as_ptr() as *const _,
-                gl::STREAM_DRAW,
-            );
-
-            gl::DrawArrays(gl::TRIANGLES, 0, self.vertices.len() as i32);
-
-            gl::BindTexture(gl::TEXTURE_2D, cur_tex as GLuint);
-
-            gl::UseProgram(cur_prog as GLuint);
-
-            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-            gl::BindVertexArray(0);
-            gl::BlendFunc(cur_blend_src as GLuint, cur_blend_dst as GLuint);
-        }
-    } // <-- FramebufferRenderer::draw(self)
-
     pub fn enable(&self) {
         let mut old_fb: GLint = 0;
         unsafe {
@@ -223,8 +161,6 @@ impl Drop for FramebufferRenderer {
         unsafe {
             gl::DeleteTextures(1, &mut self.tex);
             gl::DeleteFramebuffers(1, &mut self.fb);
-            gl::DeleteVertexArrays(1, &mut self.vao);
-            gl::DeleteBuffers(1, &mut self.vbo);
         }
     } // <-- Drop for FramebufferRenderer::drop(self)
 }

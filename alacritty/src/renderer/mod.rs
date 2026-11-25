@@ -246,6 +246,8 @@ impl Renderer {
 
     /// Draw all rectangles simultaneously to prevent excessive program swaps.
     pub fn draw_rects(&mut self, size_info: &SizeInfo, metrics: &Metrics, rects: Vec<RenderRect>, clear_color: Rgb) {
+        let mut rects = rects;
+        rects.push(RenderRect::new_blit(size_info));
         if rects.is_empty() {
             return;
         }
@@ -359,8 +361,6 @@ impl Renderer {
 
     /// Start drawing to a framebuffer
     pub fn start_fb(&self) { self.fb_renderer.enable(); }
-    /// Draw the framebuffer quad
-    pub fn draw_fb(&self)  { self.fb_renderer.draw(self.rect_renderer.normal_program()); }
     /// End drawing to a framebuffer
     pub fn end_fb(&self)   { self.fb_renderer.disable(); }
 }

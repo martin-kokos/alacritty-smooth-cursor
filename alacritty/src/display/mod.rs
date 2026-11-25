@@ -925,7 +925,6 @@ impl Display {
         };
 
         self.renderer.end_fb();
-        self.renderer.draw_fb();
 
         // Collect some timing data
         let now   = Instant::now();

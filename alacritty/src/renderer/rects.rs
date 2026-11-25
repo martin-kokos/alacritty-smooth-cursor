@@ -34,6 +34,17 @@ impl RenderRect {
     pub fn new_cur(x: f32, y: f32, width: f32, height: f32, color: Rgb, alpha: f32) -> Self {
         RenderRect { kind: RectKind::Inverting, x, y, width, height, color, alpha }
     }
+    pub fn new_blit(size_info: &SizeInfo) -> Self {
+        RenderRect {
+            kind: RectKind::Blit,
+            x: 0.,
+            y: 0.,
+            width: size_info.width(),
+            height: size_info.height(),
+            color: Rgb::default(),
+            alpha: 1.0,
+        }
+    }
 
     /// Compare the rects within tolerance
     pub fn soft_compare(&self, other: &Self) -> bool {
@@ -132,7 +143,8 @@ pub enum RectKind {
     Undercurl = 2,
     DottedUnderline = 3,
     DashedUnderline = 4,
-    NumKinds = 5,
+    Blit = 5,
+    NumKinds = 6,
 }
 
 impl RenderLine {
@@ -346,6 +358,7 @@ impl RectRenderer {
         let inverting_program = RectShaderProgram::new(shader_version, RectKind::Inverting)?;
         let rect_program = RectShaderProgram::new(shader_version, RectKind::Normal)?;
         let undercurl_program = RectShaderProgram::new(shader_version, RectKind::Undercurl)?;
+        let blit_program = RectShaderProgram::new(shader_version, RectKind::Blit)?;
         // This shader has way more ALU operations than other rect shaders, so use a fallback
         // to underline just for it when we can't compile it.
         let dotted_program = match RectShaderProgram::new(shader_version, RectKind::DottedUnderline)
@@ -398,12 +411,8 @@ impl RectRenderer {
             gl::BindBuffer(gl::ARRAY_BUFFER, 0);
         }
 
-        let programs = [inverting_program, rect_program, undercurl_program, dotted_program, dashed_program];
+        let programs = [inverting_program, rect_program, undercurl_program, dotted_program, dashed_program, blit_program];
         Ok(Self { vao, vbo, programs, vertices: Default::default() })
-    }
-
-    pub fn normal_program(&self) -> GLuint {
-        return self.programs[RectKind::Normal as usize].id()
     }
 
     pub fn draw(&mut self, size_info: &SizeInfo, metrics: &Metrics, rects: Vec<RenderRect>, fbtex: GLuint, clear_color: Rgb) {
@@ -456,7 +465,7 @@ impl RectRenderer {
                 // Draw all vertices as list of triangles.
                 gl::DrawArrays(gl::TRIANGLES, 0, vertices.len() as i32);
 
-                if rect_kind == RectKind::Inverting as u8 {
+                if rect_kind == RectKind::Inverting as u8 || rect_kind == RectKind::Blit as u8 {
                     gl::BindTexture(gl::TEXTURE_2D, cur_tex as GLuint);
                 }
             }
@@ -555,6 +564,7 @@ impl RectShaderProgram {
             RectKind::DottedUnderline => Some("#define DRAW_DOTTED\n"),
             RectKind::DashedUnderline => Some("#define DRAW_DASHED\n"),
             RectKind::Inverting => Some("#define DRAW_INVERTING\n"),
+            RectKind::Blit => Some("#define DRAW_BLIT\n"),
             _ => None,
         };
         let program = ShaderProgram::new(shader_version, header, RECT_SHADER_V, RECT_SHADER_F)?;
